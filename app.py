@@ -15,19 +15,21 @@ def load_data(file_path, default_cols):
     if os.path.exists(file_path):
         try:
             df = pd.read_csv(file_path, encoding='utf-8')
-            # 检查列是否完整，如果缺失则补充空列，保证后续操作不出错
-            missing_cols = [col for col in default_cols if col not in df.columns]
-            for col in missing_cols:
-                df[col] = pd.NA
-            # 确保返回的是列表格式以便在 session_state 中操作
+            # 确保列完整
+            for col in default_cols:
+                if col not in df.columns:
+                    df[col] = pd.NA
+            # 转换为列表字典格式，便于在 session_state 中操作
             return df.to_dict('records')
         except pd.errors.EmptyDataError:
+            return []
+        except Exception as e:
+            st.error(f"加载数据文件 {file_path} 失败: {e}")
             return []
     return []
 
 def save_data(df, file_path):
     """将DataFrame保存为CSV文件。"""
-    # 确保文件所在的目录存在
     os.makedirs(os.path.dirname(file_path) or '.', exist_ok=True)
     df.to_csv(file_path, index=False, encoding='utf-8')
 
@@ -50,21 +52,24 @@ CRITERIA = {
 }
 
 # --- 初始化 Session State (从文件加载数据) ---
+project_default_cols = ['name', 'applicant', 'stage', 'time']
+vote_default_cols = ['Project Name', 'Stage', 'Expert', 'Research', 'Tech', 'Deliverables', 'Output', 'Budget', 'Time']
+
 if 'projects' not in st.session_state:
-    st.session_state['projects'] = load_data(PROJECTS_FILE, ['name', 'applicant', 'stage', 'time'])
+    st.session_state['projects'] = load_data(PROJECTS_FILE, project_default_cols)
 if 'votes' not in st.session_state:
-    st.session_state['votes'] = load_data(VOTES_FILE, ['Project Name', 'Stage', 'Expert', 'Research', 'Tech', 'Deliverables', 'Output', 'Budget', 'Time'])
+    st.session_state['votes'] = load_data(VOTES_FILE, vote_default_cols)
 if 'logged_in_user' not in st.session_state:
     st.session_state['logged_in_user'] = None 
 if 'user_name' not in st.session_state:
     st.session_state['user_name'] = ""
 
-# --- 界面逻辑 (大部分不变) ---
+# --- 界面逻辑 ---
 
 st.set_page_config(page_title="大飞机研究院项目评审系统", layout="wide")
 st.title("✈️ 大飞机研究院项目评审打分系统")
 
-# 1. 登录侧边栏
+# 1. 登录侧边栏 (不变)
 with st.sidebar:
     st.header("登录")
     role = st.radio("选择角色", ["专家", "管理员"])
@@ -101,10 +106,13 @@ with st.sidebar:
 user_type = st.session_state['logged_in_user']
 current_user_name = st.session_state['user_name']
 
+# =================================================================
+#                         管理员控制台
+# =================================================================
 if user_type == "admin":
     st.header("🔧 管理员控制台")
     
-    # 添加项目 (新增写入 CSV)
+    # 2.1 添加项目 (不变)
     with st.expander("➕ 添加新项目", expanded=True):
         c1, c2, c3, c4 = st.columns(4)
         new_name = c1.text_input("项目名称")
@@ -124,14 +132,63 @@ if user_type == "admin":
                         "time": new_time
                     }
                     st.session_state['projects'].append(new_project)
-                    # 将更新后的数据保存到 CSV
                     save_data(pd.DataFrame(st.session_state['projects']), PROJECTS_FILE)
-                    st.success(f"项目 {new_name} 添加成功！数据已保存。")
+                    st.success(f"项目 **{new_name}** 添加成功！数据已保存。")
                     st.rerun()
             else:
                 st.warning("请输入项目名称")
 
-    # 数据报表区 (使用最新加载的数据)
+    # 2.2 项目删减功能 (新增)
+    st.divider()
+    st.subheader("🗑️ 项目与评分管理")
+    
+    if st.session_state['projects']:
+        # 获取所有项目名称用于选择
+        project_names = [p['name'] for p in st.session_state['projects']]
+        
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            project_to_manage = st.selectbox("选择要管理的项目", project_names)
+        
+        with col2:
+            st.markdown("##### 选择操作")
+            c_del1, c_del2 = st.columns(2)
+            
+            # --- 功能 1: 清空评分 ---
+            if c_del1.button("清空项目评分", help="只删除该项目的所有专家打分，项目本身保留"):
+                # 筛选出要保留的评分（即不等于当前项目的评分）
+                initial_votes_count = len(st.session_state['votes'])
+                st.session_state['votes'] = [
+                    v for v in st.session_state['votes'] if v['Project Name'] != project_to_manage
+                ]
+                
+                votes_deleted = initial_votes_count - len(st.session_state['votes'])
+                
+                save_data(pd.DataFrame(st.session_state['votes']), VOTES_FILE)
+                st.success(f"✅ 项目 **{project_to_manage}** 的 **{votes_deleted}** 条评分已清空并保存！")
+                st.rerun()
+            
+            # --- 功能 2: 删除整个项目 ---
+            if c_del2.button("❌ 删除整个项目", type="primary", help="删除项目本身，以及该项目所有的专家打分"):
+                # 删除项目配置
+                st.session_state['projects'] = [
+                    p for p in st.session_state['projects'] if p['name'] != project_to_manage
+                ]
+                # 删除项目评分
+                st.session_state['votes'] = [
+                    v for v in st.session_state['votes'] if v['Project Name'] != project_to_manage
+                ]
+                
+                # 保存并刷新
+                save_data(pd.DataFrame(st.session_state['projects']), PROJECTS_FILE)
+                save_data(pd.DataFrame(st.session_state['votes']), VOTES_FILE)
+                st.error(f"🗑️ 项目 **{project_to_manage}** 已被彻底删除！")
+                st.rerun()
+    else:
+        st.info("暂无项目可供管理。")
+        
+    # 2.3 数据报表区 (不变)
     st.divider()
     st.subheader("📊 评审数据汇总")
     
@@ -139,17 +196,15 @@ if user_type == "admin":
         all_votes_df = pd.DataFrame(st.session_state['votes'])
         all_votes_df['Total'] = all_votes_df[['Research', 'Tech', 'Deliverables', 'Output', 'Budget']].sum(axis=1)
 
-        # 1. 按项目展示详细打分表
         st.markdown("### 1️⃣ 各项目打分明细")
         unique_projects = all_votes_df['Project Name'].unique()
         
         for proj_name in unique_projects:
-            with st.expander(f"📁 项目：{proj_name} (点击展开详情)", expanded=True):
+            with st.expander(f"📁 项目：{proj_name} (点击展开详情)", expanded=False): # 默认不展开，防止页面过长
                 proj_df = all_votes_df[all_votes_df['Project Name'] == proj_name].copy()
                 display_cols = ['Expert', 'Research', 'Tech', 'Deliverables', 'Output', 'Budget', 'Total', 'Time']
                 st.dataframe(proj_df[display_cols], use_container_width=True)
 
-        # 2. 最终汇总表
         st.markdown("### 2️⃣ 最终平均分汇总表")
         summary_df = all_votes_df.groupby("Project Name")[['Total', 'Research', 'Tech', 'Deliverables', 'Output', 'Budget']].mean().reset_index()
         summary_df = summary_df.round(2)
@@ -160,13 +215,16 @@ if user_type == "admin":
     else:
         st.info("暂无任何打分数据。")
 
-    # 查看原始项目列表
+    # 2.4 查看原始项目列表 (不变)
     with st.expander("查看所有项目配置"):
         if st.session_state['projects']:
             st.table(pd.DataFrame(st.session_state['projects']))
         else:
             st.write("暂无项目")
 
+# =================================================================
+#                           专家评审界面
+# =================================================================
 elif user_type == "expert":
     st.header(f"📝 专家评审：{current_user_name}")
     
@@ -201,7 +259,7 @@ elif user_type == "expert":
                 with st.form("grading_form"):
                     st.markdown(f"### {stage_type}评分标准")
                     
-                    # 使用默认值以减少鼠标操作
+                    # 使用默认值
                     s1_default = rubric['research']['max'] - 2 if rubric['research']['max'] > 2 else 0
                     s2_default = rubric['tech']['max'] - 3 if rubric['tech']['max'] > 3 else 0
                     s3_default = rubric['deliverables']['max'] - 2 if rubric['deliverables']['max'] > 2 else 0
@@ -243,15 +301,17 @@ elif user_type == "expert":
                             "Time": datetime.now().strftime("%Y-%m-%d %H:%M")
                         }
                         st.session_state['votes'].append(vote_record)
-                        # 将更新后的数据保存到 CSV
                         save_data(pd.DataFrame(st.session_state['votes']), VOTES_FILE)
                         st.success("评分提交成功！数据已保存。")
                         st.rerun() 
 
+# =================================================================
+#                             未登录状态
+# =================================================================
 else:
     st.info("👈 请在左侧登录")
     st.markdown("""
     ### 使用说明
-    1. **管理员**：密码 `admin`，负责添加项目、查看汇总。
+    1. **管理员**：密码 `admin`，负责添加项目、管理数据、查看汇总。
     2. **专家**：密码 `123`，输入姓名后即可进入打分。
     """)
