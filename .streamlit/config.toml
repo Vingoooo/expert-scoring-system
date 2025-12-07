@@ -1,0 +1,4 @@
+[global]
+# 允许应用在运行时写入本地文件，这对CSV持久化至关重要。
+# Streamlit Cloud 运行时会将文件写入临时存储空间。
+dataWritingMode = "overwrite"
