@@ -7,8 +7,6 @@ import os
 ADMIN_PASSWORD = "admin"  # 管理员密码
 EXPERT_PASSWORD = "123"   # 专家密码
 PROJECTS_FILE = "projects.csv"
-VOTES_FILE = "votes.csv"
-# 新增：用于存储专家最终提交的分数
 FINAL_VOTES_FILE = "final_votes.csv" 
 
 # --- 数据持久化函数 ---
@@ -33,21 +31,21 @@ def save_data(df, file_path):
     os.makedirs(os.path.dirname(file_path) or '.', exist_ok=True)
     df.to_csv(file_path, index=False, encoding='utf-8')
 
-# --- 评分标准定义 (不变) ---
+# --- 评分标准定义 (已修正波浪号为转义字符 '\~') ---
 CRITERIA = {
     "中期": {
-        "research": {"name": "研究目标 (20分)", "desc": "项目申请书规定的阶段性研究内容是否按计划推进", "max": 20, "tips": "符合要求16~20; 基本符合12~15; 不符合<12"},
-        "tech": {"name": "技术指标 (30分)", "desc": "主要技术指标是否达到项目中期节点要求", "max": 30, "tips": "符合要求24~30; 基本符合18~23分; 不符合<18"},
-        "deliverables": {"name": "交付物 (20分)", "desc": "交付物形成情况能否支撑后续研究顺利完成", "max": 20, "tips": "符合要求16~20; 基本符合12~15; 不符合<12"},
-        "output": {"name": "成果产出 (20分)", "desc": "取得阶段性技术突破，提出初步的新理论/方法；形成实验平台/仿真模型等", "max": 20, "tips": "符合要求16~20; 基本符合12~15; 不符合<12"},
-        "budget": {"name": "经费 (10分)", "desc": "经费使用合理合规，执行率与进度匹配", "max": 10, "tips": "符合要求8~10; 基本符合5~7; 不符合<5"}
+        "research": {"name": "研究目标 (20分)", "desc": "项目申请书规定的阶段性研究内容是否按计划推进", "max": 20, "tips": "符合要求16\~20分；基本符合12\~15分；不符合＜12分。"},
+        "tech": {"name": "技术指标 (30分)", "desc": "主要技术指标是否达到项目中期节点要求", "max": 30, "tips": "符合要求24\~30分；基本符合18\~23分；不符合＜18分。"},
+        "deliverables": {"name": "交付物 (20分)", "desc": "交付物形成情况能否支撑后续研究顺利完成", "max": 20, "tips": "符合要求16\~20分；基本符合12\~15分；不符合＜12分。"},
+        "output": {"name": "成果产出 (20分)", "desc": "取得阶段性技术突破，提出初步的新理论、新方法；形成实验平台/仿真模型等", "max": 20, "tips": "符合要求16\~20分；基本符合12\~15分；不符合＜12分。"},
+        "budget": {"name": "经费 (10分)", "desc": "经费使用合理合规，执行率与进度匹配", "max": 10, "tips": "符合要求8\~10分；基本符合5\~7分；不符合＜5分。"}
     },
     "结题": {
-        "research": {"name": "研究目标 (20分)", "desc": "项目申请书规定的研究内容是否全部实现", "max": 20, "tips": "符合要求16~20; 基本符合12~15; 不符合<12"},
-        "tech": {"name": "技术指标 (30分)", "desc": "主要技术指标是否全部完成", "max": 30, "tips": "符合要求24~30; 基本符合18~23分; 不符合<18"},
-        "deliverables": {"name": "交付物 (20分)", "desc": "交付物是否全部完成，且质量较高", "max": 20, "tips": "符合要求16~20; 基本符合12~15; 不符合<12"},
-        "output": {"name": "成果产出 (20分)", "desc": "取得技术突破，攻克关键核心技术；形成成果并取得知识产权/论文等", "max": 20, "tips": "符合要求16~20; 基本符合12~15; 不符合<12"},
-        "budget": {"name": "经费 (10分)", "desc": "经费使用合理合规，经费执行率高", "max": 10, "tips": "符合要求8~10; 基本符合5~7; 不符合<5"}
+        "research": {"name": "研究目标 (20分)", "desc": "项目申请书规定的研究内容是否全部实现", "max": 20, "tips": "符合要求16\~20分；基本符合12\~15分；不符合＜12分。"},
+        "tech": {"name": "技术指标 (30分)", "desc": "主要技术指标是否全部完成", "max": 30, "tips": "符合要求24\~30分；基本符合18\~23分；不符合＜18分。"},
+        "deliverables": {"name": "交付物 (20分)", "desc": "交付物是否全部完成，且质量较高", "max": 20, "tips": "符合要求16\~20分；基本符合12\~15分；不符合＜12分。"},
+        "output": {"name": "成果产出 (20分)", "desc": "取得技术突破，攻克关键核心技术；形成成果并取得知识产权/论文等", "max": 20, "tips": "符合要求16\~20分；基本符合12\~15分；不符合＜12分。"},
+        "budget": {"name": "经费 (10分)", "desc": "经费使用合理合规，经费执行率高", "max": 10, "tips": "符合要求8\~10分；基本符合5\~7分；不符合＜5分。"}
     }
 }
 
@@ -57,7 +55,6 @@ vote_default_cols = ['Project Name', 'Stage', 'Expert', 'Research', 'Tech', 'Del
 
 if 'projects' not in st.session_state:
     st.session_state['projects'] = load_data(PROJECTS_FILE, project_default_cols)
-# ⚠️ 注意：管理员现在读取的是 'final_votes.csv'
 if 'final_votes' not in st.session_state:
     st.session_state['final_votes'] = load_data(FINAL_VOTES_FILE, vote_default_cols) 
 
@@ -66,12 +63,18 @@ if 'logged_in_user' not in st.session_state:
 if 'user_name' not in st.session_state:
     st.session_state['user_name'] = ""
 
-# 新增：专家暂存数据 (存储在内存中，直到最终提交)
 if 'draft_votes' not in st.session_state:
-    st.session_state['draft_votes'] = {} # 格式: {expert_name: {project_name: vote_record}}
-# 新增：标记专家是否已最终提交
+    st.session_state['draft_votes'] = {} 
 if 'final_submitted' not in st.session_state:
-    st.session_state['final_submitted'] = {} # 格式: {expert_name: True/False}
+    st.session_state['final_submitted'] = {} 
+
+# 初始化或更新实时分数缓存
+if 'live_scores' not in st.session_state:
+    st.session_state['live_scores'] = {}
+if 'last_selected_project' not in st.session_state:
+    st.session_state['last_selected_project'] = None
+if 'current_errors' not in st.session_state:
+    st.session_state['current_errors'] = []
 
 
 # --- 界面逻辑 ---
@@ -86,7 +89,6 @@ with st.sidebar:
     
     login_name_input = ""
     if role == "专家":
-        # 登录时加载该专家以前的暂存数据（如果有）
         if st.session_state.get('user_name') and st.session_state['logged_in_user'] == 'expert':
              login_name_input = st.session_state['user_name']
              st.info(f"当前专家：{login_name_input}")
@@ -105,11 +107,11 @@ with st.sidebar:
             if login_name_input.strip():
                 st.session_state['logged_in_user'] = "expert"
                 st.session_state['user_name'] = login_name_input 
-                # 初始化该专家的暂存区和提交状态
+                
                 if login_name_input not in st.session_state['draft_votes']:
                     st.session_state['draft_votes'][login_name_input] = {}
                 if login_name_input not in st.session_state['final_submitted']:
-                    # 检查是否已存在于最终提交列表中
+                    # 初始化检查，当前专家是否已在 final_votes 中有记录
                     submitted = any(v['Expert'] == login_name_input for v in st.session_state['final_votes'])
                     st.session_state['final_submitted'][login_name_input] = submitted
                     
@@ -130,14 +132,12 @@ user_type = st.session_state['logged_in_user']
 current_user_name = st.session_state['user_name']
 
 # =================================================================
-#                         管理员控制台
+#                         管理员控制台 
 # =================================================================
 if user_type == "admin":
     st.header("🔧 管理员控制台")
     
-    # ... [管理员代码：添加项目, 项目与评分管理] (使用 final_votes.csv) ...
-    
-    # 2.1 添加项目 (新增写入 PROJECTS_FILE)
+    # 2.1 添加项目
     with st.expander("➕ 添加新项目", expanded=True):
         c1, c2, c3, c4 = st.columns(4)
         new_name = c1.text_input("项目名称")
@@ -223,7 +223,7 @@ if user_type == "admin":
             with st.expander(f"📁 项目：{proj_name} (点击展开详情)", expanded=False): 
                 proj_df = all_votes_df[all_votes_df['Project Name'] == proj_name].copy()
                 display_cols = ['Expert', 'Research', 'Tech', 'Deliverables', 'Output', 'Budget', 'Total', 'Time']
-                st.dataframe(proj_df[display_cols], use_container_width=True)
+                st.dataframe(proj_df[display_cols], use_container_width=True) 
 
         st.markdown("### 2️⃣ 最终平均分汇总表")
         summary_df = all_votes_df.groupby("Project Name")[['Total', 'Research', 'Tech', 'Deliverables', 'Output', 'Budget']].mean().reset_index()
@@ -236,17 +236,15 @@ if user_type == "admin":
         st.info("暂无任何最终提交的打分数据。")
 
 # =================================================================
-#                           专家评审界面
+#                           专家评审界面 
 # =================================================================
 elif user_type == "expert":
     st.header(f"📝 专家评审：{current_user_name}")
     
-    # 检查是否已最终提交
     is_submitted = st.session_state['final_submitted'].get(current_user_name, False)
     
     if not st.session_state['projects']:
         st.warning("管理员暂未发布评审项目。")
-        is_submitted = True # 如果没有项目，则认为评审完成
     
     if is_submitted:
         st.success("🎉 您已完成所有项目的最终提交。感谢您的评审！")
@@ -257,20 +255,26 @@ elif user_type == "expert":
         my_drafts = st.session_state['draft_votes'].get(current_user_name, {})
         
         # -------------------------------------------------------------
-        # 3. 评分总览表 (新增)
+        # 3. 评分总览表 & 最终提交
         # -------------------------------------------------------------
         st.divider()
         st.subheader("📋 评分总览与最终提交")
         
         if st.session_state['projects']:
             summary_data = []
+            project_names_list = []
             
             for p in st.session_state['projects']:
                 p_name = p['name']
+                project_names_list.append(p_name)
                 
-                if p_name in my_drafts:
+                # 状态判断：已提交 > 已暂存 > 待评分
+                if any(v['Project Name'] == p_name and v['Expert'] == current_user_name for v in st.session_state['final_votes']):
+                    status = "✅ 已提交" 
+                    total = next((v['Total'] for v in st.session_state['final_votes'] if v['Project Name'] == p_name and v['Expert'] == current_user_name), 0)
+                elif p_name in my_drafts:
                     draft = my_drafts[p_name]
-                    status = "✅ 已暂存"
+                    status = "💾 已暂存"
                     total = draft.get('Total', 0)
                 else:
                     status = "⏳ 待评分"
@@ -281,144 +285,188 @@ elif user_type == "expert":
                     "阶段": p['stage'],
                     "当前总分": total,
                     "状态": status,
-                    "进入修改": p_name # 用于识别点击的项目
                 })
             
             summary_df = pd.DataFrame(summary_data)
             
-            # 使用 st.data_editor 来实现表格点击跳转
-            st.caption("点击表格最后一列的项目名称，进入修改界面。")
-            edited_df = st.data_editor(
-                summary_df,
-                column_config={
-                    "进入修改": st.column_config.ButtonColumn(
-                        "进入修改",
-                        help="点击进入该项目的详细评分界面",
-                        key="edit_button_col"
-                    )
-                },
-                disabled=["项目名称", "阶段", "当前总分", "状态"],
-                hide_index=True,
-                use_container_width=True
-            )
+            # 1. 显示简化后的总览表
+            st.dataframe(summary_df, hide_index=True, use_container_width=True)
             
-            # 检测按钮点击事件
-            clicked_rows = edited_df[edited_df["进入修改"] == True]
-            if not clicked_rows.empty:
-                clicked_project_name = clicked_rows.iloc[0]['项目名称']
-                st.session_state['selected_project_for_edit'] = clicked_project_name
-                st.rerun() # 触发页面刷新，进入详细评分区
-            
-            # -------------------------------------------------------------
-            # 4. 最终提交按钮 (新增)
-            # -------------------------------------------------------------
-            
-            # 检查是否所有项目都已暂存
+            # 2. 最终提交按钮 (已修复，简化为一步提交)
             all_scored = len(my_drafts) == len(st.session_state['projects'])
             
             if all_scored:
                 st.markdown("---")
-                if st.button("最终提交所有评分", type="primary", help="提交后将无法修改，并向管理员报送最终分数。"):
-                    # 使用 st.form 来模拟确认弹窗
-                    with st.form("final_submission_form", clear_on_submit=True):
-                        st.warning(f"⚠️ **您确定要最终提交所有 {len(st.session_state['projects'])} 个项目评分吗？** 提交后将无法修改。")
+                st.warning(f"⚠️ **请确认所有 {len(st.session_state['projects'])} 个项目评分准确无误。** 提交后将无法修改。")
+                
+                # 使用单个按钮直接提交，增强稳定性
+                if st.button("最终确认并提交所有评分", key="final_submission_button", type="primary", help="提交后将无法修改，并向管理员报送最终分数。"):
+                    # 提交前进行最终验证
+                    if st.session_state['current_errors']:
+                        st.error("最终提交失败：请先修正当前选定项目中的所有评分错误。")
+                        # 使用 stop() 停止执行，防止数据操作
+                        st.stop()
                         
-                        if st.form_submit_button("确认提交"):
-                            
-                            # 1. 整理并写入 final_votes.csv
-                            final_vote_list = list(my_drafts.values())
-                            final_votes_df = pd.DataFrame(final_vote_list)
-                            
-                            # 2. 从 final_votes 中移除当前专家的旧数据，并添加新数据
-                            # 确保不会重复提交，如果已经提交过，旧的会被覆盖 (用于管理员清空后重新提交)
-                            st.session_state['final_votes'] = [
-                                v for v in st.session_state['final_votes'] if v['Expert'] != current_user_name
-                            ]
-                            st.session_state['final_votes'].extend(final_vote_list)
-                            
-                            # 保存到 CSV
-                            save_data(pd.DataFrame(st.session_state['final_votes']), FINAL_VOTES_FILE)
-                            
-                            # 3. 更新提交状态
-                            st.session_state['final_submitted'][current_user_name] = True
-                            st.success("✅ 所有评分已成功提交！")
-                            st.rerun()
+                    final_vote_list = list(my_drafts.values())
+                    
+                    # 核心逻辑：更新 final_votes
+                    # 1. 从 final_votes 中移除当前专家的旧数据
+                    st.session_state['final_votes'] = [
+                        v for v in st.session_state['final_votes'] if v['Expert'] != current_user_name
+                    ]
+                    # 2. 添加新数据
+                    st.session_state['final_votes'].extend(final_vote_list)
+                    
+                    # 3. 保存数据到文件
+                    save_data(pd.DataFrame(st.session_state['final_votes']), FINAL_VOTES_FILE)
+                    
+                    # 4. 更新状态并刷新
+                    st.session_state['final_submitted'][current_user_name] = True
+                    st.success("✅ 所有评分已成功提交！")
+                    st.rerun() 
             else:
-                st.warning(f"请先完成所有 {len(st.session_state['projects'])} 个项目的评分暂存，当前已暂存 {len(my_drafts)} 个。")
+                st.warning(f"请先完成所有 {len(st.session_state['projects'])} 个项目的评分暂存，当前已暂存 **{len(my_drafts)}** 个。")
         
         st.divider()
         
         # -------------------------------------------------------------
-        # 5. 详细评分界面 (Form)
+        # 4. 详细评分界面 (文本输入与实时验证)
         # -------------------------------------------------------------
         
-        # 如果从表格跳转过来，则使用跳转的项目，否则使用第一个待评分的项目
-        if 'selected_project_for_edit' in st.session_state:
-             selected_project_name = st.session_state.pop('selected_project_for_edit') # 使用后即清除
-        else:
-             # 默认选择第一个未暂存的项目，如果没有则选择第一个项目
-             default_name = next((p['name'] for p in st.session_state['projects'] if p['name'] not in my_drafts), st.session_state['projects'][0]['name'])
-             selected_project_name = st.selectbox("选择或修改项目评分", [p['name'] for p in st.session_state['projects']], index=[p['name'] for p in st.session_state['projects']].index(default_name))
-        
-        project_data = next((p for p in st.session_state['projects'] if p['name'] == selected_project_name), None)
-        
-        if project_data:
-            stage_type = project_data['stage']
+        if st.session_state['projects']:
+            # 默认选择逻辑
+            default_name = next((p['name'] for p in st.session_state['projects'] if p['name'] not in my_drafts), st.session_state['projects'][0]['name'])
+            default_index = project_names_list.index(default_name)
             
-            st.subheader(f"项目评分详情：{project_data['name']}")
-            st.info(f"申请人：{project_data['applicant']} | 阶段：**{stage_type}** | 汇报时长：{project_data['time']}分钟")
+            selected_project_name = st.selectbox(
+                "⬇️ 选择要评分或修改的项目", 
+                project_names_list, 
+                index=default_index,
+                key='project_selector', 
+                help="在上方总览表查看评分状态，在此选择项目进行详细评分或修改。",
+            )
             
-            rubric = CRITERIA[stage_type]
+            project_data = next((p for p in st.session_state['projects'] if p['name'] == selected_project_name), None)
             
-            # 获取暂存数据，用于回填表单
-            initial_draft = my_drafts.get(selected_project_name, {})
-            
-            # 使用 st.form 实现暂存逻辑
-            with st.form("grading_form"):
+            if project_data:
+                stage_type = project_data['stage']
+                
+                st.subheader(f"项目评分详情：{project_data['name']}")
+                st.info(f"申请人：{project_data['applicant']} | 阶段：**{stage_type}** | 汇报时长：{project_data['time']}分钟")
+                
+                rubric = CRITERIA[stage_type]
+                initial_draft = my_drafts.get(selected_project_name, {})
+                
+                criteria_keys = ['Research', 'Tech', 'Deliverables', 'Output', 'Budget']
+                rubric_map = {
+                    'Research': rubric['research'], 'Tech': rubric['tech'], 'Deliverables': rubric['deliverables'],
+                    'Output': rubric['output'], 'Budget': rubric['budget']
+                }
+                display_map = {
+                    'Research': 1, 'Tech': 2, 'Deliverables': 3, 'Output': 4, 'Budget': 5
+                }
+                
+                # --- 初始化 live_scores ---
+                def get_initial_value(key, initial_draft):
+                    """获取初始值。如果有暂存数据则返回，否则返回空字符串。"""
+                    if key in initial_draft:
+                        return str(initial_draft[key])
+                    # 用户的要求：默认值为空
+                    return ""
+                    
+                # 切换项目时，用该项目的暂存数据初始化 live_scores
+                if st.session_state['last_selected_project'] != selected_project_name:
+                    st.session_state['live_scores'] = {
+                        key: get_initial_value(key, initial_draft) for key in criteria_keys
+                    }
+                    st.session_state['last_selected_project'] = selected_project_name
+                    st.session_state['current_errors'] = []
+                
+                # --- 实时验证和计算总分 ---
+                valid_scores = {}
+                current_errors = []
+
+                for key in criteria_keys:
+                    # 从 session state 获取 text_input 的当前值
+                    input_key = f"text_input_{key}"
+                    input_value_str = st.session_state.get(input_key, st.session_state['live_scores'].get(key, ""))
+                    
+                    max_val = rubric_map[key]['max']
+                    
+                    try:
+                        # 尝试转换为整数
+                        score = int(input_value_str)
+                        if 0 <= score <= max_val:
+                            valid_scores[key] = score
+                            # 保持 live_scores 缓存与当前有效输入同步
+                            st.session_state['live_scores'][key] = str(score) 
+                        else:
+                            # 范围错误
+                            current_errors.append(f"❌ {rubric_map[key]['name']}：分数必须是 0 到 {max_val} 之间的整数。您输入了 {input_value_str}。")
+                            valid_scores[key] = 0 
+                    except ValueError:
+                        # 非整数错误
+                        if input_value_str.strip() == "":
+                            valid_scores[key] = 0 # 空输入按0分算
+                            st.session_state['live_scores'][key] = "" # 确保 live_scores 缓存空字符串
+                        else:
+                            current_errors.append(f"❌ {rubric_map[key]['name']}：输入值 '{input_value_str}' 必须是整数。")
+                            valid_scores[key] = 0
+                            
+                live_total_score = sum(valid_scores.values())
+                st.session_state['current_errors'] = current_errors # 存储错误列表
+                
+                # --- 显示错误和实时总分 ---
+                if st.session_state['current_errors']:
+                    st.error("请修正以下所有评分错误，否则无法暂存：\n" + "\n".join(st.session_state['current_errors']))
+
+                st.markdown(f"#### 🚀 当前实时总分: **{live_total_score}** / 100 分")
+
                 st.markdown(f"### {stage_type}评分标准")
                 
-                # 定义初始值 (若有暂存，则使用暂存数据，否则使用默认值)
-                def get_initial_score(key, max_val):
-                    if key in initial_draft:
-                        return initial_draft[key]
-                    return max_val - 2 if max_val > 2 else 0
-
-                s1 = st.slider(f"1. {rubric['research']['name']}", 0, rubric['research']['max'], get_initial_score('Research', rubric['research']['max']), key="s1_form", help=rubric['research']['tips'])
-                st.caption(rubric['research']['desc'])
-                
-                s2 = st.slider(f"2. {rubric['tech']['name']}", 0, rubric['tech']['max'], get_initial_score('Tech', rubric['tech']['max']), key="s2_form", help=rubric['tech']['tips'])
-                st.caption(rubric['tech']['desc'])
-                
-                s3 = st.slider(f"3. {rubric['deliverables']['name']}", 0, rubric['deliverables']['max'], get_initial_score('Deliverables', rubric['deliverables']['max']), key="s3_form", help=rubric['deliverables']['tips'])
-                st.caption(rubric['deliverables']['desc'])
-                
-                s4 = st.slider(f"4. {rubric['output']['name']}", 0, rubric['output']['max'], get_initial_score('Output', rubric['output']['max']), key="s4_form", help=rubric['output']['tips'])
-                st.caption(rubric['output']['desc'])
-                
-                s5 = st.slider(f"5. {rubric['budget']['name']}", 0, rubric['budget']['max'], get_initial_score('Budget', rubric['budget']['max']), key="s5_form", help=rubric['budget']['tips'])
-                st.caption(rubric['budget']['desc'])
-                
-                total_score = s1 + s2 + s3 + s4 + s5
-                st.markdown(f"#### 🚀 当前总分: **{total_score}** / 100 分")
-
-                if st.form_submit_button("💾 暂存评分"):
-                    vote_record = {
-                        "Project Name": selected_project_name,
-                        "Stage": stage_type,
-                        "Expert": current_user_name,
-                        "Research": s1,
-                        "Tech": s2,
-                        "Deliverables": s3,
-                        "Output": s4,
-                        "Budget": s5,
-                        "Total": total_score, # 暂存时计算总分
-                        "Time": datetime.now().strftime("%Y-%m-%d %H:%M")
-                    }
+                # --- 文本框定义 ---
+                for key in criteria_keys:
+                    max_val = rubric_map[key]['max']
+                    display_num = display_map[key]
                     
-                    # 写入内存中的暂存区
-                    st.session_state['draft_votes'][current_user_name][selected_project_name] = vote_record
-                    st.success(f"✅ 项目 **{selected_project_name}** 评分已暂存！总分：{total_score}")
-                    st.rerun() 
+                    # 使用 live_scores 中的值作为默认值，确保输入框显示最新的内容
+                    st.text_input(
+                        label=f"{display_num}. {rubric_map[key]['name']} (最高 {max_val} 分)",
+                        value=st.session_state['live_scores'].get(key, ""), 
+                        key=f"text_input_{key}",
+                        help=rubric_map[key]['tips']
+                    )
+                    st.caption(rubric_map[key]['desc'])
+                
+                # --- 暂存表单 ---
+                with st.form("grading_form"):
+                    st.markdown("---")
+                    st.markdown("点击 **暂存评分** 按钮，保存当前有效的输入分数，以便后续修改。")
+                    
+                    if st.form_submit_button("💾 暂存评分"):
+                        
+                        # 再次检查是否有错误
+                        if st.session_state['current_errors']:
+                            st.error("暂存失败：请先修正上面的所有输入错误。")
+                            st.stop()
+                            
+                        # 如果没有错误，使用验证后的分数 valid_scores
+                        vote_record = {
+                            "Project Name": selected_project_name,
+                            "Stage": stage_type,
+                            "Expert": current_user_name,
+                            "Research": valid_scores['Research'],
+                            "Tech": valid_scores['Tech'],
+                            "Deliverables": valid_scores['Deliverables'],
+                            "Output": valid_scores['Output'],
+                            "Budget": valid_scores['Budget'],
+                            "Total": live_total_score, 
+                            "Time": datetime.now().strftime("%Y-%m-%d %H:%M")
+                        }
+                        
+                        st.session_state['draft_votes'][current_user_name][selected_project_name] = vote_record
+                        st.success(f"✅ 项目 **{selected_project_name}** 评分已暂存！总分：{live_total_score}")
+                        st.rerun() 
 
 # =================================================================
 #                             未登录状态
